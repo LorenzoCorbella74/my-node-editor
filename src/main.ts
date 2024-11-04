@@ -39,6 +39,15 @@ let connections: { from: Rect, to: Rect, isTemporary: boolean }[] = [];
 let temporaryConnection: { from: Rect, to: Rect, isTemporary: boolean } | null;
 let tempStartRect: Rect | null;
 
+
+const getMousePos = (evt: any) => {
+  var rect = canvas.getBoundingClientRect();
+  return {
+    x: evt.clientX - rect.left,
+    y: evt.clientY - rect.top
+  };
+}
+
 const addObj = (x: number, y: number, width: number, height: number, color: string) => {
   let id = Math.random().toString(36).substring(7);
   objs.push({ id, x, y, width, height, color })
@@ -94,17 +103,6 @@ const drawGrid = () => {
   ctx.stroke();
 }
 
-
-const drawLineConnection = (from: Rect, to: Rect, isTemporary = false) => {
-  ctx.beginPath();
-  if (isTemporary) {
-    ctx.strokeStyle = 'gray'
-  }
-  ctx.moveTo(from.x + from.width, from.y + from.height / 2);
-  ctx.lineTo(to.x, to.y + to.height / 2);
-  ctx.stroke();
-}
-
 const drawBezierCurveConnection = (from: Rect, to: Rect, isTemporary = false) => {
   ctx.beginPath();
   ctx.setLineDash([]);
@@ -119,9 +117,7 @@ const drawBezierCurveConnection = (from: Rect, to: Rect, isTemporary = false) =>
   ctx.stroke();
 }
 
-const createTemporaryConnection = (start: Rect, e: any) => {
-  let x = e.clientX;
-  let y = e.clientY;
+const createTemporaryConnection = (start: Rect, { x, y }: { x: number, y: number }) => {
   x = (x - viewportTransform.x) / viewportTransform.scale
   y = (y - viewportTransform.y) / viewportTransform.scale
   tempStartRect = start
@@ -135,12 +131,11 @@ const createTemporaryConnection = (start: Rect, e: any) => {
 }
 
 const draw = () => {
-  // New code 👇
+  // adjust canvas for panning and zooming
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawGrid()
   ctx.setTransform(viewportTransform.scale, 0, 0, viewportTransform.scale, viewportTransform.x, viewportTransform.y);
-  // New Code 👆
 
   // draw Rects
   for (let obj of objs) {
@@ -175,16 +170,14 @@ const updateSelection = (x: number, y: number) => {
   draw()
 }
 
-const updatePanning = (e: any) => {
-  const localX = e.clientX;
-  const localY = e.clientY;
-  viewportTransform.x += localX - previousX;
-  viewportTransform.y += localY - previousY;
-  previousX = localX;
-  previousY = localY;
+const updatePanning = ({ x, y }: { x: number, y: number }) => {
+  viewportTransform.x += x - previousX;
+  viewportTransform.y += y - previousY;
+  previousX = x;
+  previousY = y;
 }
 
-const updateSelectedObjPosition = (selectedObj: Rect, { x, y }: any) => {
+const updateSelectedObjPosition = (selectedObj: Rect, { x, y }: { x: number, y: number }) => {
   selectedObj.x += (x - selectObjX) / viewportTransform.scale;
   selectedObj.y += (y - selectObjY) / viewportTransform.scale;
   selectObjX = x;
@@ -192,14 +185,10 @@ const updateSelectedObjPosition = (selectedObj: Rect, { x, y }: any) => {
 }
 
 const updateZooming = (e: any) => {
-
-  const oldScale = viewportTransform.scale;
   const oldX = viewportTransform.x;
   const oldY = viewportTransform.y;
-
   const localX = e.clientX;
   const localY = e.clientY;
-
   const previousScale = viewportTransform.scale;
 
   // restrict scale
@@ -214,34 +203,38 @@ const updateZooming = (e: any) => {
   viewportTransform.scale = newScale;
 }
 
-const onMouseMove = (e: any) => {
+const onMouseMoveHandler = (e: any) => {
+  let mouse = getMousePos(e)
   // move object
   if (e.ctrlKey) {
     let selectedObj = objs.find(obj => obj.selected)
     if (selectedObj) {
-      updateSelectedObjPosition(selectedObj, e)
+      updateSelectedObjPosition(selectedObj, mouse)
     }
     // create connection
   } else if (e.shiftKey) {
     let selectedObj = objs.find(obj => obj.selected)
     if (selectedObj) {
-      createTemporaryConnection(selectedObj, e)
+      createTemporaryConnection(selectedObj, mouse)
     } else {
       temporaryConnection = null
     }
     // panning
   } else {
-    updatePanning(e)
+    updatePanning(mouse)
   }
   draw()
 }
 
-const onMouseWheel = (e: any) => {
+const onMouseWheelHandler = (e: any) => {
+  if(e.ctrlKey) {
+    e.preventDefault()
+  }
   updateZooming(e)
   draw()
 }
 
-canvas.addEventListener("wheel", onMouseWheel);
+canvas.addEventListener("wheel", onMouseWheelHandler);
 
 canvas.addEventListener("mousedown", (e) => {
 
@@ -255,7 +248,7 @@ canvas.addEventListener("mousedown", (e) => {
 
   updateSelection(e.clientX, e.clientY)
 
-  canvas.addEventListener("mousemove", onMouseMove);
+  canvas.addEventListener("mousemove", onMouseMoveHandler);
 })
 
 canvas.addEventListener("mouseup", (e: any) => {
@@ -266,7 +259,7 @@ canvas.addEventListener("mouseup", (e: any) => {
       connections.push({ from: tempStartRect, to: endRect, isTemporary: false })
     }
   }
-  canvas.removeEventListener("mousemove", onMouseMove);
+  canvas.removeEventListener("mousemove", onMouseMoveHandler);
   draw();
 })
 
@@ -278,19 +271,26 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+// TODO: add data to nodes
+canvas.addEventListener('contextmenu', (e) => {
+  e.preventDefault()
+  let { x, y } = getMousePos(e)
+  let obj = isMouseInsideObj(x, y)
+  if (obj) {
+     prompt('Enter label')
+    draw()
+  }
+});
+
 canvas.addEventListener('dblclick', (e) => {
-  // add an object inside the canvas grid using the mouse position
-  const rect = canvas.getBoundingClientRect();
-  const x = ((e.clientX - rect.left) - viewportTransform.x) / viewportTransform.scale;
-  const y = ((e.clientY - rect.top) - viewportTransform.y) / viewportTransform.scale;
+  let { x: mx, y: my } = getMousePos(e)
+  let x = (mx - viewportTransform.x) / viewportTransform.scale
+  let y = (my - viewportTransform.y) / viewportTransform.scale
   addObj(x, y, 50, 50, 'green')
-  console.log('doubleclick', e)
 })
 
 addObj(0, 0, 50, 50, 'red')
 addObj(100, 100, 50, 50, 'blue')
 
-
 draw()
-// ``
 
