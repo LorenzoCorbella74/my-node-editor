@@ -1,7 +1,15 @@
-import { Connection, Node } from './models';
+import { Connection, Node, Point } from './models';
 import './style.css'
 
-const cellSize = 25;
+const CELL_SIZE = 25;
+const NODE_WIDTH = 50;
+const NODE_HEIGHT = 50;
+
+const viewportTransform = {
+  x: 0,
+  y: 0,
+  scale: 1
+}
 
 const canvas = document.getElementById('canvas') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
@@ -15,24 +23,16 @@ const resizeCanvas = () => {
 
 resizeCanvas();
 
-const viewportTransform = {
-  x: 0,
-  y: 0,
-  scale: 1
-}
-
 //  previous mouse position for later
 let previousX = 0;
 let previousY = 0;
-let selectObjX = 0;
-let selectObjY = 0;
+let prevSelectObjX = 0;
+let prevSelectObjY = 0;
 
 let nodes: Node[] = [];
-
 let connections: Connection[] = [];
 let temporaryConnection: Connection | null;
 let tempStartRect: Node | null;
-
 
 const themes = {
   light: {
@@ -63,7 +63,6 @@ const themes = {
 
 let currentTheme = themes.light;
 
-
 const getMousePos = (evt: any) => {
   var rect = canvas.getBoundingClientRect();
   return {
@@ -78,7 +77,7 @@ const addNode = (x: number, y: number, width: number, height: number) => {
   draw()
 }
 
-const drawRect = (x: number, y: number, width: number, height: number, selected = false) => {
+const drawRect = ({ x, y, width, height, selected = false }: Node) => {
   if (selected) {
     ctx.fillStyle = currentTheme.rectangleSelected;
     ctx.strokeStyle = currentTheme.rectangleSelectedStroke;
@@ -93,43 +92,34 @@ const drawRect = (x: number, y: number, width: number, height: number, selected 
 }
 
 const drawGrid = () => {
-  /* Style of the grid line */
   ctx.strokeStyle = currentTheme.backgroundGrid;
   canvas.style.backgroundColor = currentTheme.background;
   ctx.setLineDash([]);
   ctx.lineWidth = 1;
 
   ctx.beginPath();
-
   /* Vertical lines spanning the full width */
   for (
-    /* Start the first line based on offsetX and scale */
-    let x = ((viewportTransform.x / viewportTransform.scale) % cellSize) * viewportTransform.scale;
+    let x = ((viewportTransform.x / viewportTransform.scale) % CELL_SIZE) * viewportTransform.scale;
     x <= canvas.width;
-    /* Cell size based on scale amount */
-    x += cellSize * viewportTransform.scale
+    x += CELL_SIZE * viewportTransform.scale
   ) {
     ctx.moveTo(x, 0);
     ctx.lineTo(x, canvas.height);
   }
-
   /* Horizontal lines spanning the full height */
   for (
-    /* Start the first line based on offsetY and scale */
-    let y = ((viewportTransform.y / viewportTransform.scale) % cellSize) * viewportTransform.scale;
+    let y = ((viewportTransform.y / viewportTransform.scale) % CELL_SIZE) * viewportTransform.scale;
     y <= canvas.height;
-    /* Cell size based on scale amount */
-    y += cellSize * viewportTransform.scale
+    y += CELL_SIZE * viewportTransform.scale
   ) {
     ctx.moveTo(0, y);
     ctx.lineTo(canvas.width, y);
   }
-
-  /* Draw the lines (path) on the canvas */
   ctx.stroke();
 }
 
-const drawBezierCurveConnection = (from: Node, to: Node, isTemporary = false, selected = false) => {
+const drawBezierCurveConnection = ({ from, to, isTemporary = false, selected = false }: Connection) => {
   ctx.beginPath();
   ctx.setLineDash([]);
   ctx.strokeStyle = currentTheme.connection;
@@ -138,23 +128,24 @@ const drawBezierCurveConnection = (from: Node, to: Node, isTemporary = false, se
     ctx.strokeStyle = 'gray'
     ctx.setLineDash([5, 10]);
   }
+  if (selected) {
+    ctx.strokeStyle = currentTheme.connectionSelected;
+  }
   ctx.moveTo(from.x + from.width, from.y + from.height / 2);
   ctx.bezierCurveTo(from.x + from.width + 50, from.y + from.height / 2, to.x - 50, to.y + to.height / 2, to.x, to.y + to.height / 2);
   ctx.stroke();
 }
 
-const createTemporaryConnection = (start: Node, { x, y }: { x: number, y: number }) => {
+const createTemporaryConnection = (start: Node, { x, y }: Point) => {
   x = (x - viewportTransform.x) / viewportTransform.scale
   y = (y - viewportTransform.y) / viewportTransform.scale
   tempStartRect = start
-  if (start) {
-    temporaryConnection = {
-      id: 'temp',
-      from: start,
-      to: { id: 'temp', x, y, width: 1, height: 1 },
-      isTemporary: true,
-      selected: false
-    }
+  temporaryConnection = {
+    id: 'temp',
+    from: start,
+    to: { id: 'temp', x, y, width: 1, height: 1 },
+    isTemporary: true,
+    selected: false
   }
 }
 
@@ -164,21 +155,19 @@ const draw = () => {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawGrid()
   ctx.setTransform(viewportTransform.scale, 0, 0, viewportTransform.scale, viewportTransform.x, viewportTransform.y);
-
-  // draw Rects
+  // draw Nodes
   for (let obj of nodes) {
-    drawRect(obj.x, obj.y, obj.width, obj.height, obj.selected)
+    drawRect(obj)
   }
   // draw connections
   for (let connection of connections) {
-    drawBezierCurveConnection(connection.from, connection.to)
+    drawBezierCurveConnection(connection)
   }
   // draw temporary connection
   if (temporaryConnection !== null && temporaryConnection?.from && temporaryConnection?.to) {
-    drawBezierCurveConnection(temporaryConnection.from, temporaryConnection.to, true)
+    drawBezierCurveConnection(temporaryConnection)
   }
-
-  // Scala il contenuto per compensare la risoluzione aumentata
+  // TODO: ??? Scala il contenuto per compensare la risoluzione aumentata
   ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
 }
 
@@ -201,18 +190,18 @@ const updateSelection = (x: number, y: number) => {
   draw()
 }
 
-const updatePanning = ({ x, y }: { x: number, y: number }) => {
+const updatePanning = ({ x, y }: Point) => {
   viewportTransform.x += x - previousX;
   viewportTransform.y += y - previousY;
   previousX = x;
   previousY = y;
 }
 
-const updateSelectedObjPosition = (selectedObj: Node, { x, y }: { x: number, y: number }) => {
-  selectedObj.x += (x - selectObjX) / viewportTransform.scale;
-  selectedObj.y += (y - selectObjY) / viewportTransform.scale;
-  selectObjX = x;
-  selectObjY = y;
+const updateSelectedObjPosition = (selectedObj: Node, { x, y }: Point) => {
+  selectedObj.x += (x - prevSelectObjX) / viewportTransform.scale;
+  selectedObj.y += (y - prevSelectObjY) / viewportTransform.scale;
+  prevSelectObjX = x;
+  prevSelectObjY = y;
 }
 
 const updateZooming = (e: any) => {
@@ -276,13 +265,13 @@ const onMouseWheelHandler = (e: any) => {
 canvas.addEventListener("wheel", onMouseWheelHandler);
 
 canvas.addEventListener("mousedown", (e) => {
-  let {x,y} = getMousePos(e)
+  let { x, y } = getMousePos(e)
   // previous mouse pos for panning
   previousX = x;
   previousY = y;
   // previous mouse pos for object selection
-  selectObjX = x;
-  selectObjY = y;
+  prevSelectObjX = x;
+  prevSelectObjY = y;
 
   updateSelection(x, y)
 
@@ -290,14 +279,14 @@ canvas.addEventListener("mousedown", (e) => {
 })
 
 canvas.addEventListener("mouseup", (e: any) => {
-  let {x,y} = getMousePos(e)
+  let { x, y } = getMousePos(e)
   canvas.style.cursor = "default";
   if (e.shiftKey && temporaryConnection && tempStartRect) {
     temporaryConnection = null
     let endRect = isMouseInsideObj(x, y)
     if (endRect) {
       let id = Math.random().toString(36).substring(7);
-      connections.push({id, from: tempStartRect, to: endRect, isTemporary: false, selected: false })
+      connections.push({ id, from: tempStartRect, to: endRect, isTemporary: false, selected: false })
     }
   }
   canvas.removeEventListener("mousemove", onMouseMoveHandler);
@@ -327,7 +316,7 @@ canvas.addEventListener('dblclick', (e) => {
   let { x: mx, y: my } = getMousePos(e)
   let x = (mx - viewportTransform.x) / viewportTransform.scale
   let y = (my - viewportTransform.y) / viewportTransform.scale
-  addNode(x, y, 50, 50)
+  addNode(x, y, NODE_WIDTH, NODE_HEIGHT)
 })
 
 window.addEventListener("resize", () => {
@@ -340,8 +329,8 @@ document.getElementById("toggleTheme")?.addEventListener("click", () => {
   draw();
 });
 
-addNode(0, 0, 50, 50)
-addNode(100, 100, 50, 50)
+addNode(0, 0, NODE_WIDTH, NODE_HEIGHT)
+addNode(100, 100, NODE_WIDTH, NODE_HEIGHT)
 
 draw()
 

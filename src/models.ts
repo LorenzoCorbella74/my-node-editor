@@ -16,3 +16,8 @@ export type Connection = {
     isTemporary: boolean,
     selected: boolean,
 }
+
+export type Point = {
+    x: number,
+    y: number,
+}
