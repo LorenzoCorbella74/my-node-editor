@@ -1,3 +1,4 @@
+import { Connection, Node } from './models';
 import './style.css'
 
 const cellSize = 25;
@@ -5,9 +6,14 @@ const cellSize = 25;
 const canvas = document.getElementById('canvas') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
 
-// https://stackoverflow.com/a/8876069
-canvas.width = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
-canvas.height = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+// Funzione per aggiornare le dimensioni del canvas
+const resizeCanvas = () => {
+  // https://stackoverflow.com/a/8876069
+  canvas.width = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0) * window.devicePixelRatio;
+  canvas.height = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0) * window.devicePixelRatio;
+}
+
+resizeCanvas();
 
 const viewportTransform = {
   x: 0,
@@ -15,29 +21,47 @@ const viewportTransform = {
   scale: 1
 }
 
-type Rect = {
-  id: string,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  color: string,
-  selected?: boolean,
-  label?: string
-}
-
-// We need to keep track of our previous mouse position for later
+//  previous mouse position for later
 let previousX = 0;
 let previousY = 0;
-
 let selectObjX = 0;
 let selectObjY = 0;
 
-let objs: Rect[] = [];
+let nodes: Node[] = [];
 
-let connections: { from: Rect, to: Rect, isTemporary: boolean }[] = [];
-let temporaryConnection: { from: Rect, to: Rect, isTemporary: boolean } | null;
-let tempStartRect: Rect | null;
+let connections: Connection[] = [];
+let temporaryConnection: Connection | null;
+let tempStartRect: Node | null;
+
+
+const themes = {
+  light: {
+    background: "#ffffff",
+    backgroundGrid: "#f0f0f0",
+    rectangleFill: "#add8e6",
+    rectangleStroke: "#000000",
+    rectangleSelected: "orange",
+    rectangleSelectedStroke: "#D08770",
+    connection: "#5E81AC",
+    connectionSelected: "#D08770",
+    connectionTemporary: "gray",
+    text: "#000000"
+  },
+  dark: {
+    background: "#333333",
+    backgroundGrid: "#444444",
+    rectangleFill: "#4682b4",
+    rectangleStroke: "#ffffff",
+    rectangleSelected: "orange",
+    rectangleSelectedStroke: "#D08770f",
+    connection: "#5E81AC",
+    connectionSelected: "#D08770",
+    connectionTemporary: "gray",
+    text: "#ffffff"
+  }
+};
+
+let currentTheme = themes.light;
 
 
 const getMousePos = (evt: any) => {
@@ -48,19 +72,20 @@ const getMousePos = (evt: any) => {
   };
 }
 
-const addObj = (x: number, y: number, width: number, height: number, color: string) => {
+const addNode = (x: number, y: number, width: number, height: number) => {
   let id = Math.random().toString(36).substring(7);
-  objs.push({ id, x, y, width, height, color })
+  nodes.push({ id, x, y, width, height })
   draw()
 }
 
-const drawRect = (x: number, y: number, width: number, height: number, color: string, selected = false) => {
-  ctx.fillStyle = color
+const drawRect = (x: number, y: number, width: number, height: number, selected = false) => {
   if (selected) {
-    ctx.strokeStyle = 'violet'
+    ctx.fillStyle = currentTheme.rectangleSelected;
+    ctx.strokeStyle = currentTheme.rectangleSelectedStroke;
     ctx.lineWidth = 2
   } else {
-    ctx.strokeStyle = 'black'
+    ctx.fillStyle = currentTheme.rectangleFill;
+    ctx.strokeStyle = currentTheme.rectangleStroke;
     ctx.lineWidth = 1
   }
   ctx.fillRect(x, y, width, height)
@@ -69,7 +94,8 @@ const drawRect = (x: number, y: number, width: number, height: number, color: st
 
 const drawGrid = () => {
   /* Style of the grid line */
-  ctx.strokeStyle = "rgb(229,231,235)";
+  ctx.strokeStyle = currentTheme.backgroundGrid;
+  canvas.style.backgroundColor = currentTheme.background;
   ctx.setLineDash([]);
   ctx.lineWidth = 1;
 
@@ -103,10 +129,10 @@ const drawGrid = () => {
   ctx.stroke();
 }
 
-const drawBezierCurveConnection = (from: Rect, to: Rect, isTemporary = false) => {
+const drawBezierCurveConnection = (from: Node, to: Node, isTemporary = false, selected = false) => {
   ctx.beginPath();
   ctx.setLineDash([]);
-  ctx.strokeStyle = 'black';
+  ctx.strokeStyle = currentTheme.connection;
   ctx.lineWidth = 1
   if (isTemporary) {
     ctx.strokeStyle = 'gray'
@@ -117,15 +143,17 @@ const drawBezierCurveConnection = (from: Rect, to: Rect, isTemporary = false) =>
   ctx.stroke();
 }
 
-const createTemporaryConnection = (start: Rect, { x, y }: { x: number, y: number }) => {
+const createTemporaryConnection = (start: Node, { x, y }: { x: number, y: number }) => {
   x = (x - viewportTransform.x) / viewportTransform.scale
   y = (y - viewportTransform.y) / viewportTransform.scale
   tempStartRect = start
   if (start) {
     temporaryConnection = {
+      id: 'temp',
       from: start,
-      to: { id: 'temp', x, y, width: 50, height: 50, color: 'gray' },
-      isTemporary: true
+      to: { id: 'temp', x, y, width: 1, height: 1 },
+      isTemporary: true,
+      selected: false
     }
   }
 }
@@ -138,8 +166,8 @@ const draw = () => {
   ctx.setTransform(viewportTransform.scale, 0, 0, viewportTransform.scale, viewportTransform.x, viewportTransform.y);
 
   // draw Rects
-  for (let obj of objs) {
-    drawRect(obj.x, obj.y, obj.width, obj.height, obj.color, obj.selected)
+  for (let obj of nodes) {
+    drawRect(obj.x, obj.y, obj.width, obj.height, obj.selected)
   }
   // draw connections
   for (let connection of connections) {
@@ -149,18 +177,21 @@ const draw = () => {
   if (temporaryConnection !== null && temporaryConnection?.from && temporaryConnection?.to) {
     drawBezierCurveConnection(temporaryConnection.from, temporaryConnection.to, true)
   }
+
+  // Scala il contenuto per compensare la risoluzione aumentata
+  ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
 }
 
 const isMouseInsideObj = (x: number, y: number) => {
   x = (x - viewportTransform.x) / viewportTransform.scale
   y = (y - viewportTransform.y) / viewportTransform.scale
-  return objs.find(obj => x >= obj.x && x <= obj.x + obj.width && y >= obj.y && y <= obj.y + obj.height)
+  return nodes.find(obj => x >= obj.x && x <= obj.x + obj.width && y >= obj.y && y <= obj.y + obj.height)
 }
 
 const updateSelection = (x: number, y: number) => {
   x = (x - viewportTransform.x) / viewportTransform.scale
   y = (y - viewportTransform.y) / viewportTransform.scale
-  for (let obj of objs) {
+  for (let obj of nodes) {
     if (x >= obj.x && x <= obj.x + obj.width && y >= obj.y && y <= obj.y + obj.height) {
       obj.selected = true
     } else {
@@ -177,7 +208,7 @@ const updatePanning = ({ x, y }: { x: number, y: number }) => {
   previousY = y;
 }
 
-const updateSelectedObjPosition = (selectedObj: Rect, { x, y }: { x: number, y: number }) => {
+const updateSelectedObjPosition = (selectedObj: Node, { x, y }: { x: number, y: number }) => {
   selectedObj.x += (x - selectObjX) / viewportTransform.scale;
   selectedObj.y += (y - selectObjY) / viewportTransform.scale;
   selectObjX = x;
@@ -185,6 +216,11 @@ const updateSelectedObjPosition = (selectedObj: Rect, { x, y }: { x: number, y: 
 }
 
 const updateZooming = (e: any) => {
+  if (e.deltaY < 0) {
+    canvas.style.cursor = "zoom-in";
+  } else {
+    canvas.style.cursor = "zoom-out";
+  }
   const oldX = viewportTransform.x;
   const oldY = viewportTransform.y;
   const localX = e.clientX;
@@ -207,13 +243,15 @@ const onMouseMoveHandler = (e: any) => {
   let mouse = getMousePos(e)
   // move object
   if (e.ctrlKey) {
-    let selectedObj = objs.find(obj => obj.selected)
+    canvas.style.cursor = "move";
+    let selectedObj = nodes.find(obj => obj.selected)
     if (selectedObj) {
       updateSelectedObjPosition(selectedObj, mouse)
     }
-    // create connection
+    // create temporary connection
   } else if (e.shiftKey) {
-    let selectedObj = objs.find(obj => obj.selected)
+    canvas.style.cursor = "crosshair";
+    let selectedObj = nodes.find(obj => obj.selected)
     if (selectedObj) {
       createTemporaryConnection(selectedObj, mouse)
     } else {
@@ -221,13 +259,14 @@ const onMouseMoveHandler = (e: any) => {
     }
     // panning
   } else {
+    canvas.style.cursor = "grab";
     updatePanning(mouse)
   }
   draw()
 }
 
 const onMouseWheelHandler = (e: any) => {
-  if(e.ctrlKey) {
+  if (e.ctrlKey) {
     e.preventDefault()
   }
   updateZooming(e)
@@ -237,26 +276,28 @@ const onMouseWheelHandler = (e: any) => {
 canvas.addEventListener("wheel", onMouseWheelHandler);
 
 canvas.addEventListener("mousedown", (e) => {
-
+  let {x,y} = getMousePos(e)
   // previous mouse pos for panning
-  previousX = e.clientX;
-  previousY = e.clientY;
-
+  previousX = x;
+  previousY = y;
   // previous mouse pos for object selection
-  selectObjX = e.clientX;
-  selectObjY = e.clientY;
+  selectObjX = x;
+  selectObjY = y;
 
-  updateSelection(e.clientX, e.clientY)
+  updateSelection(x, y)
 
   canvas.addEventListener("mousemove", onMouseMoveHandler);
 })
 
 canvas.addEventListener("mouseup", (e: any) => {
+  let {x,y} = getMousePos(e)
+  canvas.style.cursor = "default";
   if (e.shiftKey && temporaryConnection && tempStartRect) {
     temporaryConnection = null
-    let endRect = isMouseInsideObj(e.clientX, e.clientY)
+    let endRect = isMouseInsideObj(x, y)
     if (endRect) {
-      connections.push({ from: tempStartRect, to: endRect, isTemporary: false })
+      let id = Math.random().toString(36).substring(7);
+      connections.push({id, from: tempStartRect, to: endRect, isTemporary: false, selected: false })
     }
   }
   canvas.removeEventListener("mousemove", onMouseMoveHandler);
@@ -265,7 +306,7 @@ canvas.addEventListener("mouseup", (e: any) => {
 
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Delete') {
-    objs = objs.filter(obj => !obj.selected)
+    nodes = nodes.filter(obj => !obj.selected)
     connections = connections.filter(connection => !connection.from.selected && !connection.to.selected)
     draw()
   }
@@ -277,7 +318,7 @@ canvas.addEventListener('contextmenu', (e) => {
   let { x, y } = getMousePos(e)
   let obj = isMouseInsideObj(x, y)
   if (obj) {
-     prompt('Enter label')
+    prompt('Enter label')
     draw()
   }
 });
@@ -286,11 +327,21 @@ canvas.addEventListener('dblclick', (e) => {
   let { x: mx, y: my } = getMousePos(e)
   let x = (mx - viewportTransform.x) / viewportTransform.scale
   let y = (my - viewportTransform.y) / viewportTransform.scale
-  addObj(x, y, 50, 50, 'green')
+  addNode(x, y, 50, 50)
 })
 
-addObj(0, 0, 50, 50, 'red')
-addObj(100, 100, 50, 50, 'blue')
+window.addEventListener("resize", () => {
+  resizeCanvas()
+  draw()
+});
+
+document.getElementById("toggleTheme")?.addEventListener("click", () => {
+  currentTheme = (currentTheme === themes.light) ? themes.dark : themes.light;
+  draw();
+});
+
+addNode(0, 0, 50, 50)
+addNode(100, 100, 50, 50)
 
 draw()
 
