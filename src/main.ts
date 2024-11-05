@@ -1,11 +1,12 @@
 import { Connection, Node, Point } from './models';
 import './style.css'
 
+const APP_VERSION = "0.1.0";
 const CELL_SIZE = 25;
 const NODE_WIDTH = 50;
 const NODE_HEIGHT = 50;
 
-const viewportTransform = {
+let viewportTransform = {
   x: 0,
   y: 0,
   scale: 1
@@ -108,7 +109,7 @@ const drawRect = ({ x, y, width, height, selected = false, selectionColor }: Nod
   }
   ctx.fillRect(x, y, width, height)
   ctx.strokeRect(x, y, width, height)
-  console.log("x:", x, "y:", y, "width:", width, "height:", height);
+  // console.log("x:", x, "y:", y, "width:", width, "height:", height);
 
   selectionCtx.fillStyle = selectionColor;
   selectionCtx.fillRect(x, y, width, height)
@@ -190,7 +191,7 @@ const draw = () => {
   drawGrid()
   ctx.setTransform(viewportTransform.scale, 0, 0, viewportTransform.scale, viewportTransform.x, viewportTransform.y);
 
-/*   selectionCtx.setTransform(1, 0, 0, 1, 0, 0); */
+  /*   selectionCtx.setTransform(1, 0, 0, 1, 0, 0); */
   selectionCtx.setTransform(viewportTransform.scale, 0, 0, viewportTransform.scale, viewportTransform.x, viewportTransform.y);
 
   // draw Nodes
@@ -217,9 +218,9 @@ const isMouseInsideObj = (x: number, y: number) => {
 }
 
 const updateSelection = (x: number, y: number) => {
-/*   let nx = (x - viewportTransform.x) / viewportTransform.scale
-  let ny = (y - viewportTransform.y) / viewportTransform.scale
-  console.log("nx:", nx, "ny:", ny); */
+  /*   let nx = (x - viewportTransform.x) / viewportTransform.scale
+    let ny = (y - viewportTransform.y) / viewportTransform.scale
+    console.log("nx:", nx, "ny:", ny); */
 
   // Ottieni il colore del pixel sul canvas invisibile
   const pixel = selectionCtx.getImageData(x, y, 1, 1).data;
@@ -328,6 +329,20 @@ const onMouseWheelHandler = (e: any) => {
   draw()
 }
 
+const createElementsFromImportedFile = (data: any) => {
+  if (data.ver === APP_VERSION) {
+    nodes = data.nodes;
+    connections = data.connections;
+    viewportTransform = data.viewportTransform;
+    currentTheme = data.currentTheme;
+    colorMap = data.colorMap;
+    resizeCanvas();
+    draw();
+  } else {
+    console.log('Was not possible to import the file!')
+  }
+}
+
 canvas.addEventListener("wheel", onMouseWheelHandler);
 
 canvas.addEventListener("mousedown", (e) => {
@@ -394,9 +409,8 @@ window.addEventListener("resize", () => {
   draw()
 });
 
-document.getElementById("toggleTheme")?.addEventListener("click", () => {
-  
-  if(currentTheme === themes.light) {
+document.querySelector(".btn-theme")?.addEventListener("click", () => {
+  if (currentTheme === themes.light) {
     document.getElementById("sun-full")?.classList.add("icon-invisible");
     document.getElementById("sun-full")?.classList.remove("icon-visible");
     document.getElementById("sun-empty")?.classList.add("icon-visible");
@@ -411,8 +425,58 @@ document.getElementById("toggleTheme")?.addEventListener("click", () => {
   draw();
 });
 
-addNode(0, 0, NODE_WIDTH, NODE_HEIGHT)
-addNode(100, 100, NODE_WIDTH, NODE_HEIGHT)
+document.querySelector(".btn-import")?.addEventListener("click", (e) => {
+  e.preventDefault();
+  let input = document.getElementById('file-input')!;
+  input.onchange = e => {
+    // getting a hold of the file reference
+    var file = (e.target as any)?.files[0];
+    // setting up the reader
+    var reader = new FileReader();
+    reader.readAsText(file, 'UTF-8');
+    // here we tell the reader what to do when it's done reading...
+    reader.onload = readerEvent => {
+      let content = readerEvent.target?.result as string; // this is the content!
+      try {
+        createElementsFromImportedFile(JSON.parse(content));
+      } catch (error) {
+        console.log('Was not possible to import the file!')
+      }
+    }
+  }
+  input.click();
+});
+
+document.querySelector(".btn-download")?.addEventListener("click", (e) => {
+  e.preventDefault();
+  let output = {
+    ver: APP_VERSION,
+    date: new Date().toISOString(),
+    viewportTransform: viewportTransform,
+    nodes,
+    connections,
+    currentTheme,
+    colorMap
+  }
+  var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(output));
+  var dlAnchorElem = document.getElementById('downloadAnchorElem')!;
+  dlAnchorElem.setAttribute("href", dataStr);
+  let date = new Date();
+  dlAnchorElem.setAttribute("download", `nodes_${date.toISOString()}.json`); // ``
+  dlAnchorElem.click();
+});
+
+document.querySelector(".btn-trash")?.addEventListener("click", (e: any) => {
+  e.preventDefault();
+  nodes = [];
+  connections = [];
+  viewportTransform = {
+    x: 0,
+    y: 0,
+    scale: 1
+  }
+  draw();
+});
 
 draw()
 
