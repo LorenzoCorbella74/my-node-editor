@@ -14,11 +14,19 @@ const viewportTransform = {
 const canvas = document.getElementById('canvas') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
 
+const selectionCanvas = document.createElement("canvas") as HTMLCanvasElement;
+const selectionCtx = selectionCanvas.getContext('2d') as CanvasRenderingContext2D;
+
+let colorMap: { [color: string]: number } = {};
+
 // Funzione per aggiornare le dimensioni del canvas
 const resizeCanvas = () => {
   // https://stackoverflow.com/a/8876069
   canvas.width = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0) * window.devicePixelRatio;
   canvas.height = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0) * window.devicePixelRatio;
+
+  selectionCanvas.width = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0) * window.devicePixelRatio;
+  selectionCanvas.height = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0) * window.devicePixelRatio;
 }
 
 resizeCanvas();
@@ -43,7 +51,7 @@ const themes = {
     rectangleSelected: "orange",
     rectangleSelectedStroke: "#D08770",
     connection: "#5E81AC",
-    connectionSelected: "#D08770",
+    connectionSelected: "orange",
     connectionTemporary: "gray",
     text: "#000000"
   },
@@ -53,9 +61,9 @@ const themes = {
     rectangleFill: "#4682b4",
     rectangleStroke: "#ffffff",
     rectangleSelected: "orange",
-    rectangleSelectedStroke: "#D08770f",
+    rectangleSelectedStroke: "#D08770",
     connection: "#5E81AC",
-    connectionSelected: "#D08770",
+    connectionSelected: "orange",
     connectionTemporary: "gray",
     text: "#ffffff"
   }
@@ -71,13 +79,24 @@ const getMousePos = (evt: any) => {
   };
 }
 
+const createUniqueColor = (id: number) => {
+  const r = (id & 0xff0000) >> 16;
+  const g = (id & 0x00ff00) >> 8;
+  const b = id & 0x0000ff;
+  let output = `rgb(${r}, ${g}, ${b})`;
+  colorMap[output] = id;
+  console.log("ColorMap:", colorMap);
+  return output;
+}
+
 const addNode = (x: number, y: number, width: number, height: number) => {
-  let id = Math.random().toString(36).substring(7);
-  nodes.push({ id, x, y, width, height })
+  let id = Math.floor(Math.random() * 1000000);
+  let color = createUniqueColor(id)
+  nodes.push({ id, x, y, width, height, selectionColor: color, })
   draw()
 }
 
-const drawRect = ({ x, y, width, height, selected = false }: Node) => {
+const drawRect = ({ x, y, width, height, selected = false, selectionColor }: Node) => {
   if (selected) {
     ctx.fillStyle = currentTheme.rectangleSelected;
     ctx.strokeStyle = currentTheme.rectangleSelectedStroke;
@@ -89,6 +108,10 @@ const drawRect = ({ x, y, width, height, selected = false }: Node) => {
   }
   ctx.fillRect(x, y, width, height)
   ctx.strokeRect(x, y, width, height)
+  console.log("x:", x, "y:", y, "width:", width, "height:", height);
+
+  selectionCtx.fillStyle = selectionColor;
+  selectionCtx.fillRect(x, y, width, height)
 }
 
 const drawGrid = () => {
@@ -119,21 +142,31 @@ const drawGrid = () => {
   ctx.stroke();
 }
 
-const drawBezierCurveConnection = ({ from, to, isTemporary = false, selected = false }: Connection) => {
+const drawBezierCurveConnection = ({ from, to, isTemporary = false, selected = false, selectionColor }: Connection) => {
   ctx.beginPath();
   ctx.setLineDash([]);
   ctx.strokeStyle = currentTheme.connection;
-  ctx.lineWidth = 1
+  ctx.lineWidth = 4
   if (isTemporary) {
     ctx.strokeStyle = 'gray'
     ctx.setLineDash([5, 10]);
   }
   if (selected) {
+    ctx.lineWidth = 6;
     ctx.strokeStyle = currentTheme.connectionSelected;
   }
   ctx.moveTo(from.x + from.width, from.y + from.height / 2);
   ctx.bezierCurveTo(from.x + from.width + 50, from.y + from.height / 2, to.x - 50, to.y + to.height / 2, to.x, to.y + to.height / 2);
   ctx.stroke();
+
+  selectionCtx.beginPath();
+  ctx.setLineDash([]);
+  selectionCtx.lineWidth = 6;
+  selectionCtx.strokeStyle = selectionColor;
+  selectionCtx.fillStyle = selectionColor;
+  selectionCtx.moveTo(from.x + from.width, from.y + from.height / 2);
+  selectionCtx.bezierCurveTo(from.x + from.width + 50, from.y + from.height / 2, to.x - 50, to.y + to.height / 2, to.x, to.y + to.height / 2);
+  selectionCtx.stroke();
 }
 
 const createTemporaryConnection = (start: Node, { x, y }: Point) => {
@@ -141,9 +174,10 @@ const createTemporaryConnection = (start: Node, { x, y }: Point) => {
   y = (y - viewportTransform.y) / viewportTransform.scale
   tempStartRect = start
   temporaryConnection = {
-    id: 'temp',
+    selectionColor: currentTheme.connectionTemporary,
+    id: 0,
     from: start,
-    to: { id: 'temp', x, y, width: 1, height: 1 },
+    to: { id: 0, x, y, width: 1, height: 1, selectionColor: currentTheme.connectionTemporary },
     isTemporary: true,
     selected: false
   }
@@ -155,6 +189,10 @@ const draw = () => {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawGrid()
   ctx.setTransform(viewportTransform.scale, 0, 0, viewportTransform.scale, viewportTransform.x, viewportTransform.y);
+
+/*   selectionCtx.setTransform(1, 0, 0, 1, 0, 0); */
+  selectionCtx.setTransform(viewportTransform.scale, 0, 0, viewportTransform.scale, viewportTransform.x, viewportTransform.y);
+
   // draw Nodes
   for (let obj of nodes) {
     drawRect(obj)
@@ -169,6 +207,7 @@ const draw = () => {
   }
   // TODO: ??? Scala il contenuto per compensare la risoluzione aumentata
   ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+  selectionCtx.scale(window.devicePixelRatio, window.devicePixelRatio);
 }
 
 const isMouseInsideObj = (x: number, y: number) => {
@@ -178,15 +217,42 @@ const isMouseInsideObj = (x: number, y: number) => {
 }
 
 const updateSelection = (x: number, y: number) => {
-  x = (x - viewportTransform.x) / viewportTransform.scale
-  y = (y - viewportTransform.y) / viewportTransform.scale
-  for (let obj of nodes) {
-    if (x >= obj.x && x <= obj.x + obj.width && y >= obj.y && y <= obj.y + obj.height) {
-      obj.selected = true
-    } else {
-      obj.selected = false
-    }
+/*   let nx = (x - viewportTransform.x) / viewportTransform.scale
+  let ny = (y - viewportTransform.y) / viewportTransform.scale
+  console.log("nx:", nx, "ny:", ny); */
+
+  // Ottieni il colore del pixel sul canvas invisibile
+  const pixel = selectionCtx.getImageData(x, y, 1, 1).data;
+  const color = `rgb(${pixel[0]}, ${pixel[1]}, ${pixel[2]})`;
+
+  // Identifica la figura
+  let shapeID = colorMap[color];
+  if (shapeID) {
+    console.log("Figura selezionata con ID:", shapeID);
+    nodes.forEach((node) => {
+      if (node.id === shapeID) {
+        node.selected = true;
+      } else {
+        node.selected = false;
+      }
+    });
+    connections.forEach((connection) => {
+      if (connection.id === shapeID) {
+        connection.selected = true;
+      } else {
+        connection.selected = false;
+      }
+    });
+  } else {
+    console.log("Nessuna figura selezionata");
+    nodes.forEach((node) => {
+      node.selected = false;
+    });
+    connections.forEach((connection) => {
+      connection.selected = false;
+    });
   }
+
   draw()
 }
 
@@ -285,8 +351,9 @@ canvas.addEventListener("mouseup", (e: any) => {
     temporaryConnection = null
     let endRect = isMouseInsideObj(x, y)
     if (endRect) {
-      let id = Math.random().toString(36).substring(7);
-      connections.push({ id, from: tempStartRect, to: endRect, isTemporary: false, selected: false })
+      let id = Math.floor(Math.random() * 1000000);
+      let color = createUniqueColor(id)
+      connections.push({ id, from: tempStartRect, to: endRect, isTemporary: false, selected: false, selectionColor: color })
     }
   }
   canvas.removeEventListener("mousemove", onMouseMoveHandler);
@@ -297,6 +364,9 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Delete') {
     nodes = nodes.filter(obj => !obj.selected)
     connections = connections.filter(connection => !connection.from.selected && !connection.to.selected)
+
+    connections = connections.filter(connection => !connection.selected);
+
     draw()
   }
 });
