@@ -395,6 +395,18 @@ window.addEventListener("resize", () => {
 });
 
 document.getElementById("toggleTheme")?.addEventListener("click", () => {
+  
+  if(currentTheme === themes.light) {
+    document.getElementById("sun-full")?.classList.add("icon-invisible");
+    document.getElementById("sun-full")?.classList.remove("icon-visible");
+    document.getElementById("sun-empty")?.classList.add("icon-visible");
+    document.getElementById("sun-empty")?.classList.remove("icon-invisible");
+  } else {
+    document.getElementById("sun-full")?.classList.add("icon-visible");
+    document.getElementById("sun-full")?.classList.remove("icon-invisible");
+    document.getElementById("sun-empty")?.classList.add("icon-invisible");
+    document.getElementById("sun-empty")?.classList.remove("icon-visible");
+  }
   currentTheme = (currentTheme === themes.light) ? themes.dark : themes.light;
   draw();
 });

@@ -11,12 +11,20 @@ canvas {
 
 
 #toggleTheme {
+    background-color: transparent ;
+    border: none;
     position: absolute;
     top: 10px;
     right: 10px;
-    background-color: #48659e;
-    color: #fff;
     padding: 10px;
     border-radius: 5px;
     cursor: pointer;
+}
+
+.icon-visible {
+    display: block;
+}
+
+.icon-invisible{
+    display: none;
 }
