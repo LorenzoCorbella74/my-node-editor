@@ -4,21 +4,21 @@
 A basic node editor written in Vanilla Typescript and HTML5 Canvas API, made for studying purposes. For an Angular version check [here](https://github.com/LorenzoCorbella74/node-editor). All started from this [article](https://harrisonmilbradt.com/articles/canvas-panning-and-zooming)...
 
 ## Features
-- [x] Pan and Zoom on an infinite canvas
-- [x] Add nodes (double click on canvas)
+- [x] Pan and Zoom on an infinite canvas (click and drag to pan, scroll to zoom)
+- [x] Add nodes (choose a node type from the provided dropdown)
 - [x] Move nodes (click CTRL on the node and click and drag)
-- [x] Remove nodes (click on node and press Delete key)
-- [x] Add connection (click SHIFT and drag from start to end node)
-- [x] Remove connection (click on connection and press Cancel key)
+- [x] Remove nodes (click on node and press Delete key or by context menu)
+- [x] Add connection (click SHIFT and drag from start node to end node)
+- [x] Remove connection (click on connection and press Cancel key or from context menu)
 - [x] Dark and Light mode
 - [x] Save and import node graph
+- [x] Labels on nodes and connections
 
 ## TODO
 - [ ] zoom level btn
 - [ ] animation to create nodes
 - [ ] data for nodes (sidebar ???), add nodes from context menu ???
 - [ ] drag and drop nodes from custom sidebar 
-- [ ] add more type of inputs / outputs 
 
 ## Bugs
 - [ ] selection problems after zooming/panning

@@ -5,7 +5,7 @@ export type Node = {
     width: number,
     height: number,
     selected?: boolean,
-    label?: string,
+    label: string,
     selectionColor: string,
     color: string,
 }
@@ -18,6 +18,7 @@ export type Connection = {
     isTemporary: boolean,
     selected: boolean,
     selectionColor: string,
+    label: string,
 }
 
 export type Point = {

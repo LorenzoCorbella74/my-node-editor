@@ -47,7 +47,6 @@ const themes = {
   light: {
     background: "#ffffff",
     backgroundGrid: "#f0f0f0",
-    rectangleFill: "#add8e6",
     rectangleStroke: "#000000",
     rectangleSelected: "orange",
     rectangleSelectedStroke: "#D08770",
@@ -56,16 +55,15 @@ const themes = {
     connectionTemporary: "gray",
     text: "#000000",
     nodeColors: {
-      'type-1': '#ff0000',
-      'type-2': '#00ff00',
-      'type-3': '#0000ff',
-      'type-4': '#ffff00'
+      'type-1': '#4A90E2',
+      'type-2': '#7ED321',
+      'type-3': '#add8e6',
+      'type-4': '#D0021B'
     }
   },
   dark: {
     background: "#333333",
     backgroundGrid: "#444444",
-    rectangleFill: "#4682b4",
     rectangleStroke: "#ffffff",
     rectangleSelected: "orange",
     rectangleSelectedStroke: "#D08770",
@@ -74,10 +72,10 @@ const themes = {
     connectionTemporary: "gray",
     text: "#ffffff",
     nodeColors: {
-      'type-1': '#ff0000',
-      'type-2': '#00ff00',
-      'type-3': '#0000ff',
-      'type-4': '#ffff00'
+      'type-1': '#357ABD',
+      'type-2': '#50E3C2',
+      'type-3': '#FF8C42',
+      'type-4': '#D9534F'
     }
   }
 };
@@ -116,7 +114,7 @@ const drawRect = ({ x, y, width, height, selected = false, selectionColor, color
     ctx.strokeStyle = currentTheme.rectangleSelectedStroke;
     ctx.lineWidth = 2
   } else {
-    ctx.fillStyle = color || currentTheme.rectangleFill;
+    ctx.fillStyle = color;
     ctx.strokeStyle = currentTheme.rectangleStroke;
     ctx.lineWidth = 1
   }
@@ -163,7 +161,7 @@ const drawGrid = () => {
   ctx.stroke();
 }
 
-const drawBezierCurveConnection = ({ from, to, isTemporary = false, selected = false, selectionColor }: Connection) => {
+const drawBezierCurveConnection = ({ from, to, isTemporary = false, selected = false, selectionColor, label }: Connection) => {
   ctx.beginPath();
   ctx.setLineDash([]);
   ctx.strokeStyle = currentTheme.connection;
@@ -188,6 +186,12 @@ const drawBezierCurveConnection = ({ from, to, isTemporary = false, selected = f
   selectionCtx.moveTo(from.x + from.width, from.y + from.height / 2);
   selectionCtx.bezierCurveTo(from.x + from.width + 50, from.y + from.height / 2, to.x - 50, to.y + to.height / 2, to.x, to.y + to.height / 2);
   selectionCtx.stroke();
+
+  if (label) {
+    ctx.fillStyle = currentTheme.text;
+    ctx.font = "12px Arial";
+    ctx.fillText(label, (from.x + to.x) / 2, (from.y + to.y) / 2);
+  }
 }
 
 const createTemporaryConnection = (start: Node, { x, y }: Point) => {
@@ -198,9 +202,10 @@ const createTemporaryConnection = (start: Node, { x, y }: Point) => {
     selectionColor: '',
     id: 0,
     from: start,
-    to: { id: 0, x, y, width: 1, height: 1, selectionColor: '', color:'' },
+    to: { id: 0, x, y, width: 1, height: 1, selectionColor: '', color:'', label: '' },
     isTemporary: true,
-    selected: false
+    selected: false,
+    label: ''
   }
 }
 
@@ -232,9 +237,20 @@ const draw = () => {
 }
 
 const isMouseInsideObj = (x: number, y: number) => {
-  x = (x - viewportTransform.x) / viewportTransform.scale
-  y = (y - viewportTransform.y) / viewportTransform.scale
-  return nodes.find(obj => x >= obj.x && x <= obj.x + obj.width && y >= obj.y && y <= obj.y + obj.height)
+  const pixel = selectionCtx.getImageData(x, y, 1, 1).data;
+  const color = `rgb(${pixel[0]}, ${pixel[1]}, ${pixel[2]})`;
+  const shapeID = colorMap[color];
+  if (!shapeID) {
+    return null;
+  } else {
+    let foundNode =  nodes.find(obj => obj.id === shapeID);
+    let foundConnection = connections.find(obj => obj.id === shapeID);
+    if (foundNode) {
+      return {result: foundNode, type: 'node'};
+    } else if (foundConnection) {
+      return {result: foundConnection, type: 'connection'};
+    }
+  }
 }
 
 const updateSelection = (x: number, y: number) => {
@@ -388,7 +404,7 @@ canvas.addEventListener("mouseup", (e: any) => {
     if (endRect) {
       let id = Math.floor(Math.random() * 1000000);
       let color = createUniqueColor(id)
-      connections.push({ id, from: tempStartRect, to: endRect, isTemporary: false, selected: false, selectionColor: color })
+      connections.push({ id, from: tempStartRect, to: endRect.result as Node, isTemporary: false, selected: false, selectionColor: color, label: '' })
       nodes.forEach(node => node.selected = false)
     }
   }
@@ -527,7 +543,7 @@ const titleInput = document.getElementById('title-input') as HTMLInputElement;
 const dialogOk = document.getElementById('dialog-ok') as HTMLButtonElement;
 const dialogCancel = document.getElementById('dialog-cancel') as HTMLButtonElement;
 
-let currentNode: Node | null = null;
+let currentNode: Node | Connection | null = null;
 
 canvas.addEventListener('contextmenu', (e) => {
   e.preventDefault();
@@ -540,14 +556,18 @@ canvas.addEventListener('contextmenu', (e) => {
     contextMenu.style.top = `${y}px`;
 
     contextCancel.onclick = () => {
-      nodes = nodes.filter(node => node.id !== obj.id);
+      if (obj.type === 'node') {
+        nodes = nodes.filter(node => node.id !== obj.result.id);
+      } else {
+        connections = connections.filter(connection => connection.id !== obj.result.id);
+      }
       contextMenu.style.display = 'none';
       draw();
     };
 
     contextEdit.onclick = () => {
       contextMenu.style.display = 'none';
-      currentNode = obj;
+      currentNode = obj.result;
       showDialog((title) => {
         if (currentNode) {
           currentNode.label = title;
