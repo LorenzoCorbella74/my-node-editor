@@ -90,29 +90,37 @@ const createUniqueColor = (id: number) => {
   return output;
 }
 
-const addNode = (x: number, y: number, width: number, height: number) => {
+const addNode = (x: number, y: number, width: number, height: number, color: string) => {
   let id = Math.floor(Math.random() * 1000000);
-  let color = createUniqueColor(id)
-  nodes.push({ id, x, y, width, height, selectionColor: color, })
-  draw()
-}
+  let selectionColor = createUniqueColor(id);
+  nodes.push({ id, x, y, width, height, selectionColor, color });
+  draw();
+};
 
-const drawRect = ({ x, y, width, height, selected = false, selectionColor }: Node) => {
+const drawRect = ({ x, y, width, height, selected = false, selectionColor, color, label }: Node) => {
+  ctx.beginPath();
   if (selected) {
     ctx.fillStyle = currentTheme.rectangleSelected;
     ctx.strokeStyle = currentTheme.rectangleSelectedStroke;
     ctx.lineWidth = 2
   } else {
-    ctx.fillStyle = currentTheme.rectangleFill;
+    ctx.fillStyle = color || currentTheme.rectangleFill;
     ctx.strokeStyle = currentTheme.rectangleStroke;
     ctx.lineWidth = 1
   }
-  ctx.fillRect(x, y, width, height)
-  ctx.strokeRect(x, y, width, height)
-  // console.log("x:", x, "y:", y, "width:", width, "height:", height);
-
+  ctx.roundRect(x, y, width, height, 10)
+  ctx.fill()
+  ctx.stroke()
+  
+  // draw on invisivle canvas
   selectionCtx.fillStyle = selectionColor;
   selectionCtx.fillRect(x, y, width, height)
+
+  if (label) {
+    ctx.fillStyle = currentTheme.text;
+    ctx.font = "12px Arial";
+    ctx.fillText(label, x + 4, y -8 );
+  }
 }
 
 const drawGrid = () => {
@@ -175,10 +183,10 @@ const createTemporaryConnection = (start: Node, { x, y }: Point) => {
   y = (y - viewportTransform.y) / viewportTransform.scale
   tempStartRect = start
   temporaryConnection = {
-    selectionColor: currentTheme.connectionTemporary,
+    selectionColor: '',
     id: 0,
     from: start,
-    to: { id: 0, x, y, width: 1, height: 1, selectionColor: currentTheme.connectionTemporary },
+    to: { id: 0, x, y, width: 1, height: 1, selectionColor: '', color:'' },
     isTemporary: true,
     selected: false
   }
@@ -387,7 +395,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 // TODO: add data to nodes
-canvas.addEventListener('contextmenu', (e) => {
+/* canvas.addEventListener('contextmenu', (e) => {
   e.preventDefault()
   let { x, y } = getMousePos(e)
   let obj = isMouseInsideObj(x, y)
@@ -395,14 +403,14 @@ canvas.addEventListener('contextmenu', (e) => {
     prompt('Enter label')
     draw()
   }
-});
+}); */
 
-canvas.addEventListener('dblclick', (e) => {
+/* canvas.addEventListener('dblclick', (e) => {
   let { x: mx, y: my } = getMousePos(e)
   let x = (mx - viewportTransform.x) / viewportTransform.scale
   let y = (my - viewportTransform.y) / viewportTransform.scale
   addNode(x, y, NODE_WIDTH, NODE_HEIGHT)
-})
+}) */
 
 window.addEventListener("resize", () => {
   resizeCanvas()
@@ -476,6 +484,70 @@ document.querySelector(".btn-trash")?.addEventListener("click", (e: any) => {
     scale: 1
   }
   draw();
+});
+
+const contextMenu = document.getElementById('context-menu') as HTMLDivElement;
+const nodeTypeMenu = document.getElementById('node-type-menu') as HTMLDivElement;
+const contextCancel = document.getElementById('context-cancel') as HTMLLIElement;
+const contextEdit = document.getElementById('context-edit') as HTMLLIElement;
+
+const nodeType1 = document.getElementById('node-type-1') as HTMLLIElement;
+const nodeType2 = document.getElementById('node-type-2') as HTMLLIElement;
+const nodeType3 = document.getElementById('node-type-3') as HTMLLIElement;
+const nodeType4 = document.getElementById('node-type-4') as HTMLLIElement;
+
+const nodeColors: {[type:string]:string} = {
+  'node-type-1': '#ff0000',
+  'node-type-2': '#00ff00',
+  'node-type-3': '#0000ff',
+  'node-type-4': '#ffff00'
+};
+
+canvas.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  const { x, y } = getMousePos(e);
+  const obj = isMouseInsideObj(x, y);
+
+  if (obj) {
+    contextMenu.style.display = 'block';
+    contextMenu.style.left = `${e.clientX}px`;
+    contextMenu.style.top = `${e.clientY}px`;
+
+    contextCancel.onclick = () => {
+      nodes = nodes.filter(node => node.id !== obj.id);
+      contextMenu.style.display = 'none';
+      draw();
+    };
+
+    contextEdit.onclick = () => {
+      contextMenu.style.display = 'none';
+      const newLabel = prompt('Enter node title', obj.label || '');
+      if (newLabel !== null) {
+        obj.label = newLabel;
+        draw();
+      }
+    };
+  } else {
+    nodeTypeMenu.style.display = 'block';
+    nodeTypeMenu.style.left = `${e.clientX}px`;
+    nodeTypeMenu.style.top = `${e.clientY}px`;
+
+    const addNodeOfType = (type: string) => {
+      const color = nodeColors[type];
+      addNode(x, y, NODE_WIDTH, NODE_HEIGHT, color);
+      nodeTypeMenu.style.display = 'none';
+    };
+
+    nodeType1.onclick = () => addNodeOfType('node-type-1');
+    nodeType2.onclick = () => addNodeOfType('node-type-2');
+    nodeType3.onclick = () => addNodeOfType('node-type-3');
+    nodeType4.onclick = () => addNodeOfType('node-type-4');
+  }
+});
+
+document.addEventListener('click', () => {
+  contextMenu.style.display = 'none';
+  nodeTypeMenu.style.display = 'none';
 });
 
 draw()

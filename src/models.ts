@@ -7,6 +7,7 @@ export type Node = {
     selected?: boolean,
     label?: string,
     selectionColor: string,
+    color: string,
 }
 
 
