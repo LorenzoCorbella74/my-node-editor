@@ -1,4 +1,4 @@
-import { Connection, Node, NodeType, Point } from './models';
+import { Connection, ConnectionDirection, Node, NodeType, Point } from './models';
 import './style.css'
 
 const APP_VERSION = "0.1.0";
@@ -96,11 +96,11 @@ const createUniqueColor = (id: number) => {
   const b = id & 0x0000ff;
   let output = `rgb(${r}, ${g}, ${b})`;
   colorMap[output] = id;
-  console.log("ColorMap:", colorMap);
+  // console.log("ColorMap:", colorMap);
   return output;
 }
 
-const addNode = (x: number, y: number, width: number, height: number, color: string, label:string) => {
+const addNode = (x: number, y: number, width: number, height: number, color: string, label: string) => {
   let id = Math.floor(Math.random() * 1000000);
   let selectionColor = createUniqueColor(id);
   nodes.push({ id, x, y, width, height, selectionColor, color, label });
@@ -121,7 +121,7 @@ const drawRect = ({ x, y, width, height, selected = false, selectionColor, color
   ctx.roundRect(x, y, width, height, 10)
   ctx.fill()
   ctx.stroke()
-  
+
   // draw on invisivle canvas
   selectionCtx.fillStyle = selectionColor;
   selectionCtx.fillRect(x, y, width, height)
@@ -129,7 +129,7 @@ const drawRect = ({ x, y, width, height, selected = false, selectionColor, color
   if (label) {
     ctx.fillStyle = currentTheme.text;
     ctx.font = "12px Arial";
-    ctx.fillText(label, x + 4, y -6 );
+    ctx.fillText(label, x + 4, y - 6);
   }
 }
 
@@ -161,38 +161,82 @@ const drawGrid = () => {
   ctx.stroke();
 }
 
-const drawBezierCurveConnection = ({ from, to, isTemporary = false, selected = false, selectionColor, label }: Connection) => {
+const drawBezierCurveConnection = ({ from, to, isTemporary = false, selected = false, selectionColor, label, direction, dashed }: Connection) => {
   ctx.beginPath();
+  const startX = from.x + from.width;
+  const startY = from.y + from.height / 2;
+  const endX = to.x;
+  const endY = to.y + to.height / 2;
+
+  const cp1X = startX + (endX - startX) / 2;
+  const cp1Y = startY;
+  const cp2X = endX - (endX - startX) / 2;
+  const cp2Y = endY;
+
+  ctx.lineWidth = 3;
   ctx.setLineDash([]);
-  ctx.strokeStyle = currentTheme.connection;
-  ctx.lineWidth = 4
+
   if (isTemporary) {
     ctx.strokeStyle = 'gray'
     ctx.setLineDash([5, 10]);
   }
+  if (dashed) {
+    ctx.setLineDash([5, 10]);
+  }
   if (selected) {
-    ctx.lineWidth = 6;
+    ctx.lineWidth = 5;
     ctx.strokeStyle = currentTheme.connectionSelected;
   }
-  ctx.moveTo(from.x + from.width, from.y + from.height / 2);
-  ctx.bezierCurveTo(from.x + from.width + 50, from.y + from.height / 2, to.x - 50, to.y + to.height / 2, to.x, to.y + to.height / 2);
+
+
+  ctx.moveTo(startX, startY);
+  ctx.bezierCurveTo(cp1X, cp1Y, cp2X, cp2Y, endX, endY);
+  ctx.strokeStyle = selected ? 'orange' : currentTheme.connection;
   ctx.stroke();
 
+  // draw to invisible canvas
   selectionCtx.beginPath();
-  ctx.setLineDash([]);
-  selectionCtx.lineWidth = 6;
+  selectionCtx.setLineDash([]);
+  selectionCtx.lineWidth = 5;
   selectionCtx.strokeStyle = selectionColor;
   selectionCtx.fillStyle = selectionColor;
-  selectionCtx.moveTo(from.x + from.width, from.y + from.height / 2);
-  selectionCtx.bezierCurveTo(from.x + from.width + 50, from.y + from.height / 2, to.x - 50, to.y + to.height / 2, to.x, to.y + to.height / 2);
+  selectionCtx.moveTo(startX, startY);
+  selectionCtx.bezierCurveTo(cp1X, cp1Y, cp2X, cp2Y, endX, endY);
   selectionCtx.stroke();
+  selectionCtx.fill();
+
+  if (direction !== 'none') {
+    drawArrowhead(startX, startY, endX, endY, direction);
+  }
 
   if (label) {
     ctx.fillStyle = currentTheme.text;
     ctx.font = "12px Arial";
-    ctx.fillText(label, (from.x + to.x) / 2, (from.y + to.y) / 2);
+    ctx.fillText(label, (startX + endX) / 2, (startY + endY) / 2);
   }
-}
+};
+
+const drawArrowhead = (startX: number, startY: number, endX: number, endY: number, direction: 'AtoB' | 'BtoA' | 'both') => {
+  const arrowLength = 10;
+  if (direction === 'AtoB' || direction === 'both') {
+    ctx.beginPath();
+    ctx.moveTo(endX, endY);
+    ctx.lineTo(endX - arrowLength * Math.cos(- Math.PI / 6), endY - arrowLength * Math.sin(- Math.PI / 6));
+    ctx.lineTo(endX - arrowLength * Math.cos(+ Math.PI / 6), endY - arrowLength * Math.sin(+ Math.PI / 6));
+    ctx.closePath();
+    ctx.fillStyle = currentTheme.connection;
+    ctx.fill();
+  }
+  if (direction === 'BtoA' || direction === 'both') {
+    ctx.beginPath();
+    ctx.moveTo(startX, startY);
+    ctx.lineTo(startX + arrowLength * Math.cos(- Math.PI / 6), startY + arrowLength * Math.sin(- Math.PI / 6));
+    ctx.lineTo(startX + arrowLength * Math.cos(+ Math.PI / 6), startY + arrowLength * Math.sin(+ Math.PI / 6));
+    ctx.closePath();
+    ctx.fillStyle = currentTheme.connection;
+    ctx.fill();
+  }
+};
 
 const createTemporaryConnection = (start: Node, { x, y }: Point) => {
   x = (x - viewportTransform.x) / viewportTransform.scale
@@ -202,10 +246,12 @@ const createTemporaryConnection = (start: Node, { x, y }: Point) => {
     selectionColor: '',
     id: 0,
     from: start,
-    to: { id: 0, x, y, width: 1, height: 1, selectionColor: '', color:'', label: '' },
+    to: { id: 0, x, y, width: 1, height: 1, selectionColor: '', color: '', label: '' },
     isTemporary: true,
     selected: false,
-    label: ''
+    label: '',
+    direction: 'none',
+    dashed: true
   }
 }
 
@@ -243,12 +289,12 @@ const isMouseInsideObj = (x: number, y: number) => {
   if (!shapeID) {
     return null;
   } else {
-    let foundNode =  nodes.find(obj => obj.id === shapeID);
+    let foundNode = nodes.find(obj => obj.id === shapeID);
     let foundConnection = connections.find(obj => obj.id === shapeID);
     if (foundNode) {
-      return {result: foundNode, type: 'node'};
+      return { result: foundNode, type: 'node' };
     } else if (foundConnection) {
-      return {result: foundConnection, type: 'connection'};
+      return { result: foundConnection, type: 'connection' };
     }
   }
 }
@@ -366,9 +412,18 @@ const onMouseWheelHandler = (e: any) => {
 }
 
 const createElementsFromImportedFile = (data: any) => {
+
+  let n:Connection[] = []
+  // restore references
+  for (let i = 0; i < data.connections.length; i++) {
+    const connection = data.connections[i];
+    connection.from = data.nodes.find((node: any) => node.id === connection.from.id);
+    connection.to = data.nodes.find((node: any) => node.id === connection.to.id);
+    n.push(connection)
+  }
   if (data.ver === APP_VERSION) {
     nodes = data.nodes;
-    connections = data.connections;
+    connections = n;
     viewportTransform = data.viewportTransform;
     currentTheme = data.currentTheme;
     colorMap = data.colorMap;
@@ -402,9 +457,20 @@ canvas.addEventListener("mouseup", (e: any) => {
     temporaryConnection = null
     let endRect = isMouseInsideObj(x, y)
     if (endRect) {
+      // create connection
       let id = Math.floor(Math.random() * 1000000);
       let color = createUniqueColor(id)
-      connections.push({ id, from: tempStartRect, to: endRect.result as Node, isTemporary: false, selected: false, selectionColor: color, label: '' })
+      connections.push({
+        id,
+        from: tempStartRect,
+        to: endRect.result as Node,
+        isTemporary: false,
+        selected: false,
+        selectionColor: color,
+        label: '',
+        direction: 'none',
+        dashed: false
+      });
       nodes.forEach(node => node.selected = false)
     }
   }
@@ -496,22 +562,41 @@ document.querySelector(".btn-trash")?.addEventListener("click", (e: any) => {
   draw();
 });
 
-const showDialog = (callback: (title: string) => void) => {
+const showDialog = (callback: (title: string, direction: ConnectionDirection, dashed: boolean) => void) => {
   titleDialog.style.display = 'block';
   titleDialog.classList.remove('hide');
   titleDialog.classList.add('show');
-  titleInput.value = currentNode?.label || '';
+  titleInput.value = currentElement?.label || '';
   titleInput.focus();
+  if (currentElementType === 'connection') {
+    (document.getElementById((currentElement as Connection).direction || 'none') as HTMLInputElement).checked = true;
+    dashedInput.checked = (currentElement as Connection).dashed || false;
+  }
 
   const onOk = () => {
+    let direction: ConnectionDirection = 'none',
+      dashed = false;
+    if (currentElementType === 'connection') {
+      direction = (document.querySelector('input[name="direction"]:checked') as HTMLInputElement).value as ConnectionDirection;
+      dashed = (document.getElementById('style-dashed') as HTMLInputElement).checked;
+    }
     titleDialog.classList.remove('show');
     titleDialog.classList.add('hide');
     setTimeout(() => {
       titleDialog.style.display = 'none';
     }, 500);
-    callback(titleInput.value);
+    if (currentElementType === 'connection') {
+      callback(titleInput.value, direction, dashed);
+    } else {
+      callback(titleInput.value, 'none', false);
+    }
     dialogOk.removeEventListener('click', onOk);
     dialogCancel.removeEventListener('click', onCancel);
+    titleInput.value = ''; // clear input
+    if (currentElementType === 'connection') {
+      (document.getElementById('none')as HTMLInputElement).checked = true;
+      dashedInput.checked = false;
+    }
   };
 
   const onCancel = () => {
@@ -522,6 +607,11 @@ const showDialog = (callback: (title: string) => void) => {
     }, 500);
     dialogOk.removeEventListener('click', onOk);
     dialogCancel.removeEventListener('click', onCancel);
+    titleInput.value = ''; // clear input
+    if (currentElementType === 'connection') {
+      directionInput.value = 'none';
+      dashedInput.checked = false;
+    }
   };
 
   dialogOk.addEventListener('click', onOk);
@@ -539,22 +629,29 @@ const nodeType3 = document.getElementById('type-3') as HTMLLIElement;
 const nodeType4 = document.getElementById('type-4') as HTMLLIElement;
 
 const titleDialog = document.getElementById('title-dialog') as HTMLDivElement;
+const onlyForConnection = document.getElementById('only-for-connection') as HTMLDivElement;
 const titleInput = document.getElementById('title-input') as HTMLInputElement;
+const directionInput = (document.querySelector('input[name="direction"]') as HTMLInputElement);
+const dashedInput = (document.getElementById('style-dashed') as HTMLInputElement);
 const dialogOk = document.getElementById('dialog-ok') as HTMLButtonElement;
 const dialogCancel = document.getElementById('dialog-cancel') as HTMLButtonElement;
 
-let currentNode: Node | Connection | null = null;
+let currentElement: Node | Connection | null = null;
+let currentElementType: 'node' | 'connection' | null = null;
 
 canvas.addEventListener('contextmenu', (e) => {
   e.preventDefault();
   const { x, y } = getMousePos(e);
   const obj = isMouseInsideObj(x, y);
 
+  // edit or delete action for NODES or CONNECTIONS
   if (obj) {
     contextMenu.style.display = 'block';
     contextMenu.style.left = `${x}px`;
     contextMenu.style.top = `${y}px`;
+    onlyForConnection.style.display = obj.type === 'connection' ? 'block' : 'none';
 
+    // delete action
     contextCancel.onclick = () => {
       if (obj.type === 'node') {
         nodes = nodes.filter(node => node.id !== obj.result.id);
@@ -565,23 +662,33 @@ canvas.addEventListener('contextmenu', (e) => {
       draw();
     };
 
+    // edit action
     contextEdit.onclick = () => {
       contextMenu.style.display = 'none';
-      currentNode = obj.result;
-      showDialog((title) => {
-        if (currentNode) {
-          currentNode.label = title;
+      currentElement = obj.result;
+      currentElementType = obj.type as 'node' | 'connection';
+      showDialog((title, direction, dashed) => {
+        if (currentElement) {
+          currentElement.label = title;
+          if (currentElement.hasOwnProperty('direction')) {
+            (currentElement as Connection).direction = direction;
+            (currentElement as Connection).dashed = dashed;
+          }
           draw();
         }
       });
     };
   } else {
+    // ADD NODE via DROPDOWN MENU
     nodeTypeMenu.style.display = 'block';
     nodeTypeMenu.style.left = `${x}px`;
     nodeTypeMenu.style.top = `${y}px`;
+    onlyForConnection.style.display = 'none';
 
     const addNodeOfType = (type: NodeType) => {
       const color = currentTheme.nodeColors[type];
+      currentElement = null;
+      currentElementType = 'node';
       showDialog((title) => {
         addNode(x, y, NODE_WIDTH, NODE_HEIGHT, color, title);
       });

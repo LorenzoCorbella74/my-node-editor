@@ -13,6 +13,7 @@ A basic node editor written in Vanilla Typescript and HTML5 Canvas API, made for
 - [x] Dark and Light mode
 - [x] Save and import node graph
 - [x] Labels on nodes and connections
+- [x] Connection directions ('AtoB' | 'BtoA' | 'both' | 'none') and dashed line option
 
 ## TODO
 - [ ] zoom level btn

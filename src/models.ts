@@ -10,6 +10,7 @@ export type Node = {
     color: string,
 }
 
+export type ConnectionDirection = 'AtoB' | 'BtoA' | 'both' | 'none';
 
 export type Connection = {
     id: number,
@@ -19,6 +20,8 @@ export type Connection = {
     selected: boolean,
     selectionColor: string,
     label: string,
+    direction: ConnectionDirection;
+    dashed: boolean,
 }
 
 export type Point = {
