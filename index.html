@@ -39,13 +39,13 @@
 
   <!-- THEME TOGGLE -->
   <button class="btn btn-theme">
-    <svg id="sun-full" class="icon-visible" fill="#add8e6" stroke-width="0" xmlns="http://www.w3.org/2000/svg"
+    <svg id="sun-full"  fill="#add8e6" stroke-width="0" xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 16 16" height="3em" width="3em" style="overflow: visible;">
       <path
         d="M8 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM8 0a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 0zm0 13a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 13zm8-5a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2a.5.5 0 0 1 .5.5zM3 8a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2A.5.5 0 0 1 3 8zm10.657-5.657a.5.5 0 0 1 0 .707l-1.414 1.415a.5.5 0 1 1-.707-.708l1.414-1.414a.5.5 0 0 1 .707 0zm-9.193 9.193a.5.5 0 0 1 0 .707L3.05 13.657a.5.5 0 0 1-.707-.707l1.414-1.414a.5.5 0 0 1 .707 0zm9.193 2.121a.5.5 0 0 1-.707 0l-1.414-1.414a.5.5 0 0 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .707zM4.464 4.465a.5.5 0 0 1-.707 0L2.343 3.05a.5.5 0 1 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .708z">
       </path>
     </svg>
-    <svg id="sun-empty" class="icon-invisible" fill="#add8e6" stroke-width="0" xmlns="http://www.w3.org/2000/svg"
+    <svg id="sun-empty" fill="#add8e6" stroke-width="0" xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 16 16" height="3em" width="3em" style="overflow: visible;">
       <path
         d="M8 11a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm0 1a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM8 0a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 0zm0 13a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 13zm8-5a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2a.5.5 0 0 1 .5.5zM3 8a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2A.5.5 0 0 1 3 8zm10.657-5.657a.5.5 0 0 1 0 .707l-1.414 1.415a.5.5 0 1 1-.707-.708l1.414-1.414a.5.5 0 0 1 .707 0zm-9.193 9.193a.5.5 0 0 1 0 .707L3.05 13.657a.5.5 0 0 1-.707-.707l1.414-1.414a.5.5 0 0 1 .707 0zm9.193 2.121a.5.5 0 0 1-.707 0l-1.414-1.414a.5.5 0 0 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .707zM4.464 4.465a.5.5 0 0 1-.707 0L2.343 3.05a.5.5 0 1 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .708z">
@@ -53,6 +53,7 @@
     </svg>
   </button>
 
+ <!--  Node edit menu -->
   <div id="context-menu" class="context-menu">
     <ul>
       <li id="context-cancel">Cancel</li>
@@ -63,11 +64,23 @@
   <!-- Node Type Menu -->
   <div id="node-type-menu" class="context-menu">
     <ul>
-      <li id="node-type-1">Node Type 1</li>
-      <li id="node-type-2">Node Type 2</li>
-      <li id="node-type-3">Node Type 3</li>
-      <li id="node-type-4">Node Type 4</li>
+      <li id="type-1">Node Type 1</li>
+      <li id="type-2">Node Type 2</li>
+      <li id="type-3">Node Type 3</li>
+      <li id="type-4">Node Type 4</li>
     </ul>
+  </div>
+
+  <!-- Dialog for Node and Connection Title -->
+  <div id="title-dialog" class="dialog">
+    <div class="dialog-content">
+      <label for="title-input">Enter title:</label>
+      <input type="text" id="title-input" />
+      <div class="dialog-content-btn">
+        <button id="dialog-ok">OK</button>
+        <button id="dialog-cancel">Cancel</button>
+      </div>
+    </div>
   </div>
 
   <!-- DOWNLOAD -->

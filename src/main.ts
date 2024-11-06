@@ -1,4 +1,4 @@
-import { Connection, Node, Point } from './models';
+import { Connection, Node, NodeType, Point } from './models';
 import './style.css'
 
 const APP_VERSION = "0.1.0";
@@ -54,7 +54,13 @@ const themes = {
     connection: "#5E81AC",
     connectionSelected: "orange",
     connectionTemporary: "gray",
-    text: "#000000"
+    text: "#000000",
+    nodeColors: {
+      'type-1': '#ff0000',
+      'type-2': '#00ff00',
+      'type-3': '#0000ff',
+      'type-4': '#ffff00'
+    }
   },
   dark: {
     background: "#333333",
@@ -66,7 +72,13 @@ const themes = {
     connection: "#5E81AC",
     connectionSelected: "orange",
     connectionTemporary: "gray",
-    text: "#ffffff"
+    text: "#ffffff",
+    nodeColors: {
+      'type-1': '#ff0000',
+      'type-2': '#00ff00',
+      'type-3': '#0000ff',
+      'type-4': '#ffff00'
+    }
   }
 };
 
@@ -90,10 +102,10 @@ const createUniqueColor = (id: number) => {
   return output;
 }
 
-const addNode = (x: number, y: number, width: number, height: number, color: string) => {
+const addNode = (x: number, y: number, width: number, height: number, color: string, label:string) => {
   let id = Math.floor(Math.random() * 1000000);
   let selectionColor = createUniqueColor(id);
-  nodes.push({ id, x, y, width, height, selectionColor, color });
+  nodes.push({ id, x, y, width, height, selectionColor, color, label });
   draw();
 };
 
@@ -119,7 +131,7 @@ const drawRect = ({ x, y, width, height, selected = false, selectionColor, color
   if (label) {
     ctx.fillStyle = currentTheme.text;
     ctx.font = "12px Arial";
-    ctx.fillText(label, x + 4, y -8 );
+    ctx.fillText(label, x + 4, y -6 );
   }
 }
 
@@ -377,6 +389,7 @@ canvas.addEventListener("mouseup", (e: any) => {
       let id = Math.floor(Math.random() * 1000000);
       let color = createUniqueColor(id)
       connections.push({ id, from: tempStartRect, to: endRect, isTemporary: false, selected: false, selectionColor: color })
+      nodes.forEach(node => node.selected = false)
     }
   }
   canvas.removeEventListener("mousemove", onMouseMoveHandler);
@@ -385,49 +398,30 @@ canvas.addEventListener("mouseup", (e: any) => {
 
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Delete') {
+    // delete selected nodes and attached connections
     nodes = nodes.filter(obj => !obj.selected)
     connections = connections.filter(connection => !connection.from.selected && !connection.to.selected)
-
+    // remove connections
     connections = connections.filter(connection => !connection.selected);
 
     draw()
   }
 });
 
-// TODO: add data to nodes
-/* canvas.addEventListener('contextmenu', (e) => {
-  e.preventDefault()
-  let { x, y } = getMousePos(e)
-  let obj = isMouseInsideObj(x, y)
-  if (obj) {
-    prompt('Enter label')
-    draw()
-  }
-}); */
-
-/* canvas.addEventListener('dblclick', (e) => {
-  let { x: mx, y: my } = getMousePos(e)
-  let x = (mx - viewportTransform.x) / viewportTransform.scale
-  let y = (my - viewportTransform.y) / viewportTransform.scale
-  addNode(x, y, NODE_WIDTH, NODE_HEIGHT)
-}) */
-
 window.addEventListener("resize", () => {
   resizeCanvas()
   draw()
 });
 
+document.getElementById("sun-empty")!.style.display = "none";
+
 document.querySelector(".btn-theme")?.addEventListener("click", () => {
   if (currentTheme === themes.light) {
-    document.getElementById("sun-full")?.classList.add("icon-invisible");
-    document.getElementById("sun-full")?.classList.remove("icon-visible");
-    document.getElementById("sun-empty")?.classList.add("icon-visible");
-    document.getElementById("sun-empty")?.classList.remove("icon-invisible");
+    document.getElementById("sun-full")!.style.display = "none";
+    document.getElementById("sun-empty")!.style.display = "block";
   } else {
-    document.getElementById("sun-full")?.classList.add("icon-visible");
-    document.getElementById("sun-full")?.classList.remove("icon-invisible");
-    document.getElementById("sun-empty")?.classList.add("icon-invisible");
-    document.getElementById("sun-empty")?.classList.remove("icon-visible");
+    document.getElementById("sun-full")!.style.display = "block";
+    document.getElementById("sun-empty")!.style.display = "none";
   }
   currentTheme = (currentTheme === themes.light) ? themes.dark : themes.light;
   draw();
@@ -486,22 +480,54 @@ document.querySelector(".btn-trash")?.addEventListener("click", (e: any) => {
   draw();
 });
 
+const showDialog = (callback: (title: string) => void) => {
+  titleDialog.style.display = 'block';
+  titleDialog.classList.remove('hide');
+  titleDialog.classList.add('show');
+  titleInput.value = currentNode?.label || '';
+  titleInput.focus();
+
+  const onOk = () => {
+    titleDialog.classList.remove('show');
+    titleDialog.classList.add('hide');
+    setTimeout(() => {
+      titleDialog.style.display = 'none';
+    }, 500);
+    callback(titleInput.value);
+    dialogOk.removeEventListener('click', onOk);
+    dialogCancel.removeEventListener('click', onCancel);
+  };
+
+  const onCancel = () => {
+    titleDialog.classList.remove('show');
+    titleDialog.classList.add('hide');
+    setTimeout(() => {
+      titleDialog.style.display = 'none';
+    }, 500);
+    dialogOk.removeEventListener('click', onOk);
+    dialogCancel.removeEventListener('click', onCancel);
+  };
+
+  dialogOk.addEventListener('click', onOk);
+  dialogCancel.addEventListener('click', onCancel);
+};
+
 const contextMenu = document.getElementById('context-menu') as HTMLDivElement;
 const nodeTypeMenu = document.getElementById('node-type-menu') as HTMLDivElement;
 const contextCancel = document.getElementById('context-cancel') as HTMLLIElement;
 const contextEdit = document.getElementById('context-edit') as HTMLLIElement;
 
-const nodeType1 = document.getElementById('node-type-1') as HTMLLIElement;
-const nodeType2 = document.getElementById('node-type-2') as HTMLLIElement;
-const nodeType3 = document.getElementById('node-type-3') as HTMLLIElement;
-const nodeType4 = document.getElementById('node-type-4') as HTMLLIElement;
+const nodeType1 = document.getElementById('type-1') as HTMLLIElement;
+const nodeType2 = document.getElementById('type-2') as HTMLLIElement;
+const nodeType3 = document.getElementById('type-3') as HTMLLIElement;
+const nodeType4 = document.getElementById('type-4') as HTMLLIElement;
 
-const nodeColors: {[type:string]:string} = {
-  'node-type-1': '#ff0000',
-  'node-type-2': '#00ff00',
-  'node-type-3': '#0000ff',
-  'node-type-4': '#ffff00'
-};
+const titleDialog = document.getElementById('title-dialog') as HTMLDivElement;
+const titleInput = document.getElementById('title-input') as HTMLInputElement;
+const dialogOk = document.getElementById('dialog-ok') as HTMLButtonElement;
+const dialogCancel = document.getElementById('dialog-cancel') as HTMLButtonElement;
+
+let currentNode: Node | null = null;
 
 canvas.addEventListener('contextmenu', (e) => {
   e.preventDefault();
@@ -510,8 +536,8 @@ canvas.addEventListener('contextmenu', (e) => {
 
   if (obj) {
     contextMenu.style.display = 'block';
-    contextMenu.style.left = `${e.clientX}px`;
-    contextMenu.style.top = `${e.clientY}px`;
+    contextMenu.style.left = `${x}px`;
+    contextMenu.style.top = `${y}px`;
 
     contextCancel.onclick = () => {
       nodes = nodes.filter(node => node.id !== obj.id);
@@ -521,27 +547,31 @@ canvas.addEventListener('contextmenu', (e) => {
 
     contextEdit.onclick = () => {
       contextMenu.style.display = 'none';
-      const newLabel = prompt('Enter node title', obj.label || '');
-      if (newLabel !== null) {
-        obj.label = newLabel;
-        draw();
-      }
+      currentNode = obj;
+      showDialog((title) => {
+        if (currentNode) {
+          currentNode.label = title;
+          draw();
+        }
+      });
     };
   } else {
     nodeTypeMenu.style.display = 'block';
-    nodeTypeMenu.style.left = `${e.clientX}px`;
-    nodeTypeMenu.style.top = `${e.clientY}px`;
+    nodeTypeMenu.style.left = `${x}px`;
+    nodeTypeMenu.style.top = `${y}px`;
 
-    const addNodeOfType = (type: string) => {
-      const color = nodeColors[type];
-      addNode(x, y, NODE_WIDTH, NODE_HEIGHT, color);
+    const addNodeOfType = (type: NodeType) => {
+      const color = currentTheme.nodeColors[type];
+      showDialog((title) => {
+        addNode(x, y, NODE_WIDTH, NODE_HEIGHT, color, title);
+      });
       nodeTypeMenu.style.display = 'none';
     };
 
-    nodeType1.onclick = () => addNodeOfType('node-type-1');
-    nodeType2.onclick = () => addNodeOfType('node-type-2');
-    nodeType3.onclick = () => addNodeOfType('node-type-3');
-    nodeType4.onclick = () => addNodeOfType('node-type-4');
+    nodeType1.onclick = () => addNodeOfType('type-1');
+    nodeType2.onclick = () => addNodeOfType('type-2');
+    nodeType3.onclick = () => addNodeOfType('type-3');
+    nodeType4.onclick = () => addNodeOfType('type-4');
   }
 });
 
