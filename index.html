@@ -11,23 +11,31 @@
   <canvas id="canvas"></canvas>
 
   <!-- IMPORT -->
-  <button class="btn btn-import">
-    <svg width="3rem" height="3rem" viewBox="0 0 32 32" fill="#add8e6" xmlns="http://www.w3.org/2000/svg">
-      <path
-        d="M11 14.9861C11 15.5384 11.4477 15.9861 12 15.9861C12.5523 15.9861 13 15.5384 13 14.9861V7.82831L16.2428 11.0711L17.657 9.65685L12.0001 4L6.34326 9.65685L7.75748 11.0711L11 7.82854V14.9861Z" />
-      <path d="M4 14H6V18H18V14H20V18C20 19.1046 19.1046 20 18 20H6C4.89543 20 4 19.1046 4 18V14Z" />
-    </svg>
-  </button>
+   
+     <button class="btn btn-import tooltip">
+       <svg width="3rem" height="3rem" viewBox="0 0 32 32" fill="#add8e6" xmlns="http://www.w3.org/2000/svg">
+         <path
+           d="M11 14.9861C11 15.5384 11.4477 15.9861 12 15.9861C12.5523 15.9861 13 15.5384 13 14.9861V7.82831L16.2428 11.0711L17.657 9.65685L12.0001 4L6.34326 9.65685L7.75748 11.0711L11 7.82854V14.9861Z" />
+         <path d="M4 14H6V18H18V14H20V18C20 19.1046 19.1046 20 18 20H6C4.89543 20 4 19.1046 4 18V14Z" />
+       </svg>
+       <span class="tooltiptext">
+          Import
+       </span>
+     </button>
+   </div>
   <!-- DOWNLOAD -->
-  <button class="btn btn-download">
+  <button class="btn btn-download tooltip">
     <svg width="3rem" height="3rem" viewBox="0 0 32 32" fill="#add8e6" xmlns="http://www.w3.org/2000/svg">
       <path
         d="M11 5C11 4.44772 11.4477 4 12 4C12.5523 4 13 4.44772 13 5V12.1578L16.2428 8.91501L17.657 10.3292L12.0001 15.9861L6.34326 10.3292L7.75748 8.91501L11 12.1575V5Z" />
       <path d="M4 14H6V18H18V14H20V18C20 19.1046 19.1046 20 18 20H6C4.89543 20 4 19.1046 4 18V14Z" />
     </svg>
+    <span class="tooltiptext">
+      Download
+   </span>
   </button>
 
-  <button class="btn btn-trash">
+  <button class="btn btn-trash tooltip">
     <svg width="2rem" height="2rem" viewBox="0 0 24 24" fill="#add8e6" xmlns="http://www.w3.org/2000/svg">
       <path fill-rule="evenodd" clip-rule="evenodd"
         d="M17 5V4C17 2.89543 16.1046 2 15 2H9C7.89543 2 7 2.89543 7 4V5H4C3.44772 5 3 5.44772 3 6C3 6.55228 3.44772 7 4 7H5V18C5 19.6569 6.34315 21 8 21H16C17.6569 21 19 19.6569 19 18V7H20C20.5523 7 21 6.55228 21 6C21 5.44772 20.5523 5 20 5H17ZM15 4H9V5H15V4ZM17 7H7V18C7 18.5523 7.44772 19 8 19H16C16.5523 19 17 18.5523 17 18V7Z"
@@ -35,10 +43,13 @@
       <path d="M9 9H11V17H9V9Z" />
       <path d="M13 9H15V17H13V9Z" />
     </svg>
+    <span class="tooltiptext">
+      Clean canvas
+   </span>
   </button>
 
   <!-- THEME TOGGLE -->
-  <button class="btn btn-theme">
+  <button class="btn btn-theme tooltip">
     <svg id="sun-full"  fill="#add8e6" stroke-width="0" xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 16 16" height="2rem" width="2rem" style="overflow: visible;">
       <path
@@ -51,6 +62,9 @@
         d="M8 11a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm0 1a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM8 0a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 0zm0 13a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 13zm8-5a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2a.5.5 0 0 1 .5.5zM3 8a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2A.5.5 0 0 1 3 8zm10.657-5.657a.5.5 0 0 1 0 .707l-1.414 1.415a.5.5 0 1 1-.707-.708l1.414-1.414a.5.5 0 0 1 .707 0zm-9.193 9.193a.5.5 0 0 1 0 .707L3.05 13.657a.5.5 0 0 1-.707-.707l1.414-1.414a.5.5 0 0 1 .707 0zm9.193 2.121a.5.5 0 0 1-.707 0l-1.414-1.414a.5.5 0 0 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .707zM4.464 4.465a.5.5 0 0 1-.707 0L2.343 3.05a.5.5 0 1 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .708z">
       </path>
     </svg>
+    <span class="tooltiptext">
+      Theme
+   </span>
   </button>
 
  <!--  Node edit menu -->
@@ -112,6 +126,17 @@
 
   <!-- IMPORT FILE -->
   <input id="file-input" type="file" name="name" style="display: none;" />
+
+
+  <data class="how-to show">
+
+      <h3>How to use</h3>
+      <p>Right click on the canvas to select a type of node.</p>
+      <p>CTRL + Click on a node to move it.</p>
+      <p>SHIFT + Click & Drag to an end node to create a connection.</p>
+      <p>Click on a node/connection to select it.</p>
+      <p>Right click on a node or connection to edit/delete it.</p>
+  </data>
 
   <script type="module" src="/src/main.ts"></script>
 </body>

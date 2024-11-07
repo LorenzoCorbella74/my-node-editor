@@ -707,5 +707,11 @@ document.addEventListener('click', () => {
   nodeTypeMenu.style.display = 'none';
 });
 
-draw()
+draw();
 
+(document.querySelector('.how-to') as HTMLDivElement).style.display = 'block';
+
+setTimeout(() => {
+  (document.querySelector('.how-to') as HTMLDivElement).classList.remove('show');
+  (document.querySelector('.how-to') as HTMLDivElement).classList.add('hide');
+}, 30000);

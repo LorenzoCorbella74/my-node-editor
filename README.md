@@ -6,7 +6,7 @@ A basic node editor written in Vanilla Typescript and HTML5 Canvas API, made for
 ## Features
 - [x] Pan and Zoom on an infinite canvas (click and drag to pan, scroll to zoom)
 - [x] Add nodes (choose a node type from the provided dropdown)
-- [x] Move nodes (click CTRL on the node and click and drag)
+- [x] Move nodes (click CTRL on the node and drag it)
 - [x] Remove nodes (click on node and press Delete key or by context menu)
 - [x] Add connection (click SHIFT and drag from start node to end node)
 - [x] Remove connection (click on connection and press Cancel key or from context menu)
